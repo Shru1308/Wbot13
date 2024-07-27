@@ -1,3 +1,5 @@
+# setting up backend using FastAPI 
+
 # Third-party imports
 import openai
 from fastapi import FastAPI, Form, Depends
@@ -11,14 +13,15 @@ from utils import send_message, logger
 
 
 app = FastAPI()
-# Set up the OpenAI API client
+
+# Setting OpenAI API client
 openai.api_key = config("OPENAI_API_KEY")
 whatsapp_number = config("TO_NUMBER")
 
-# Dependency
+# creating new db session
 def get_db():
     try:
-        db = SessionLocal()
+        db = SessionLocal()   # from models.py
         yield db
     finally:
         db.close()
@@ -27,7 +30,7 @@ def get_db():
 async def reply(Body: str = Form(), db: Session = Depends(get_db)):
     # Call the OpenAI API to generate text with GPT-3.5
     response = openai.Completion.create(
-        engine="text-davinci-002",
+        engine="text-davinci-002",          # model used to generate response
         prompt=Body,
         max_tokens=200,
         n=1,
@@ -35,10 +38,10 @@ async def reply(Body: str = Form(), db: Session = Depends(get_db)):
         temperature=0.5,
     )
 
-    # The generated text
+    # generated text
     chat_response = response.choices[0].text.strip()
 
-    # Store the conversation in the database
+    # Store the conversation in db
     try:
         conversation = Conversation(
             sender=whatsapp_number,
@@ -51,5 +54,5 @@ async def reply(Body: str = Form(), db: Session = Depends(get_db)):
     except SQLAlchemyError as e:
         db.rollback()
         logger.error(f"Error storing conversation in database: {e}")
-    send_message(whatsapp_number, chat_response)
+    send_message(whatsapp_number, chat_response)      # utils.py
     return ""
